@@ -10,7 +10,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/genai": "^0.1.2",
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^5.20.0",
     "@upstash/ratelimit": "^2.0.3",
