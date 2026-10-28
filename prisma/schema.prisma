@@ -1,0 +1,277 @@
+// Prisma Schema for Production GenAI Celebration & Event Planner
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ORGANIZER
+  ADMIN
+}
+
+enum EventType {
+  WEDDING
+  BIRTHDAY
+  COMMUNITY
+  CUSTOM
+}
+
+enum BudgetCategory {
+  VENUE
+  CATERING
+  DECOR
+  ENTERTAINMENT
+  MISCELLANEOUS
+  CONTINGENCY
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum VendorStatus {
+  TO_CONTACT
+  CONTACTED
+  QUOTED
+  BOOKED
+  DECLINED
+}
+
+enum TimelinePhase {
+  PHASE_EARLY       // 6+ months or start
+  PHASE_MID         // 3-1 months
+  PHASE_FINAL_WEEKS // 2-1 weeks
+  PHASE_DAY_OF      // Day of event
+  PHASE_POST_EVENT  // Wrap-up & gratitude
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // GDPR and consent tracking
+  dataRetentionConsent Boolean   @default(true)
+  marketingConsent     Boolean   @default(false)
+  consentedAt          DateTime? @default(now())
+
+  // NextAuth relations
+  accounts      Account[]
+  sessions      Session[]
+  events        Event[]
+  apiUsageLogs  ApiUsageLog[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Event {
+  id              String       @id @default(cuid())
+  userId          String
+  title           String       @db.VarChar(120)
+  eventType       EventType
+  customTypeLabel String?      @db.VarChar(60)
+  eventDate       DateTime
+  location        String       @db.VarChar(255)
+  guestCount      Int          @default(50)
+  totalBudget     Decimal      @db.Decimal(12, 2)
+  currency        String       @default("USD") @db.VarChar(3)
+  themeStyle      String       @db.VarChar(255)
+  specialRequests String?      @db.Text
+  vibeStatement   String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetItems      BudgetItem[]
+  timelineTasks    TimelineTask[]
+  vendorChecklists VendorChecklist[]
+  personalizedIdeas PersonalizedIdea[]
+  guests           Guest[]
+  copilotChatLogs  CopilotChatLog[]
+
+  @@index([userId, eventDate])
+  @@index([eventType])
+}
+
+model BudgetItem {
+  id              String         @id @default(cuid())
+  eventId         String
+  category        BudgetCategory
+  label           String         @db.VarChar(100)
+  percentage      Decimal        @db.Decimal(5, 2) // e.g. 35.00
+  allocatedAmount Decimal        @db.Decimal(12, 2)
+  spentAmount     Decimal        @default(0.00) @db.Decimal(12, 2)
+  notes           String?        @db.Text
+  costSavingTip   String?        @db.Text
+  isLocked        Boolean        @default(false) // If true, AI auto-rebalance keeps this category fixed
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, category])
+}
+
+model TimelineTask {
+  id                     String        @id @default(cuid())
+  eventId                String
+  phase                  TimelinePhase
+  phaseLabel             String        @db.VarChar(100)
+  title                  String        @db.VarChar(200)
+  description            String        @db.Text
+  suggestedDueDaysBefore Int           @default(30)
+  priority               Priority      @default(MEDIUM)
+  completed              Boolean       @default(false)
+  completedAt            DateTime?
+  category               String        @default("GENERAL") @db.VarChar(50)
+  dueDate                DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, phase, priority])
+  @@index([completed])
+}
+
+model VendorChecklist {
+  id                      String         @id @default(cuid())
+  eventId                 String
+  category                BudgetCategory
+  vendorRole              String         @db.VarChar(100)
+  vendorName              String?        @db.VarChar(150)
+  status                  VendorStatus   @default(TO_CONTACT)
+  priority                Priority       @default(HIGH)
+  targetBookingLeadWeeks  Int            @default(12)
+  questionsToAsk          Json           // String array stored safely as JSON
+  contractReviewReminders Json           // String array of critical contract gotchas
+  estimatedCostRange      String?        @db.VarChar(80)
+  contactEmail            String?        @db.VarChar(150)
+  contactPhone            String?        @db.VarChar(40)
+  quotedAmount            Decimal?       @db.Decimal(12, 2)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, category, status])
+}
+
+model PersonalizedIdea {
+  id                  String   @id @default(cuid())
+  eventId             String
+  title               String   @db.VarChar(150)
+  category            String   @db.VarChar(50) // theme, activity, decor, hospitality
+  description         String   @db.Text
+  whyItFits           String   @db.Text
+  estimatedCostImpact String   @db.VarChar(20) // low, medium, high
+  isFavorite          Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+// GDPR-compliant Guest entity with minimal PII and explicit consent tracking
+model Guest {
+  id                  String    @id @default(cuid())
+  eventId             String
+  fullName            String    @db.VarChar(120)
+  email               String?   @db.VarChar(150)
+  phone               String?   @db.VarChar(30)
+  rsvpStatus          String    @default("PENDING") @db.VarChar(20) // ATTENDING, DECLINED, PENDING
+  dietaryRestrictions String?   @db.VarChar(255)
+  tableNumber         Int?
+  plusOneAllowed      Boolean   @default(false)
+  encryptedNotes      String?   @db.Text // Encrypted via AES-256 for GDPR compliance
+  anonymizedAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, rsvpStatus])
+}
+
+model CopilotChatLog {
+  id        String   @id @default(cuid())
+  eventId   String
+  sender    String   @db.VarChar(20) // user, assistant, system
+  message   String   @db.Text
+  tokens    Int      @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+}
+
+// Rate limiting & token abuse prevention audit log
+model ApiUsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @db.VarChar(100)
+  tokens    Int      @default(0)
+  ipAddress String?  @db.VarChar(45)
+  status    Int      @default(200)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([ipAddress, createdAt])
+}
+

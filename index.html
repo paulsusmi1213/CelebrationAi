@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CelebrationAI | GenAI Celebration & Event Planner</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fbf7f4',
+              100: '#f5ede6',
+              500: '#b88164',
+              600: '#a76f53'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom accessibility focus & smooth transitions */
+    :focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #4f46e5;
+      cursor: pointer;
+      -webkit-appearance: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body class="h-full min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col font-sans antialiased">
+
+  <!-- TOP APP HEADER -->
+  <header class="border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-base tracking-tight text-zinc-900 dark:text-white">CelebrationAI</span>
+          <span class="hidden sm:inline-block ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+            GenAI Event Planner
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Financial Invariants Active (10% Buffer)
+        </span>
+        <button id="themeToggleBtn" aria-label="Toggle dark mode" class="p-2 rounded-xl text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <i data-lucide="moon" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <main id="mainContainer" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-24">
+
+    <!-- VIEW 1: ONBOARDING WIZARD -->
+    <section id="wizardView" class="max-w-3xl mx-auto py-4">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-3">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i>
+          <span>GenAI Celebration Architecture</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+          Design Your Perfect Celebration
+        </h1>
+        <p class="mt-2 text-sm sm:text-base text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
+          Tailored backwards timelines, zero-sum budget protection with a locked 10% emergency buffer, and contract-ready vendor checklists.
+        </p>
+      </div>
+
+      <!-- Accessible Step Indicator -->
+      <nav aria-label="Onboarding Progress" class="mb-8">
+        <div class="flex items-center justify-between relative mb-2">
+          <div class="flex flex-col items-center gap-1.5">
+            <div id="stepBadge1" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/50">1</div>
+            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">Type</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5">
+            <div id="stepBadge2" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700">2</div>
+            <span class="text-xs font-medium text-zinc-500">Details</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5">
+            <div id="stepBadge3" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700">3</div>
+            <span class="text-xs font-medium text-zinc-500">Budget</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5">
+            <div id="stepBadge4" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700">4</div>
+            <span class="text-xs font-medium text-zinc-500">Aesthetic</span>
+          </div>
+        </div>
+        <div class="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+          <div id="stepProgressBar" class="h-full bg-indigo-600 transition-all duration-300" style="width: 25%;"></div>
+        </div>
+      </nav>
+
+      <!-- Wizard Card Container -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        
+        <!-- STEP 1: EVENT TYPE -->
+        <div id="stepContainer1" class="space-y-6">
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">What kind of celebration are we orchestrating?</h2>
+          <p class="text-xs text-zinc-500">Select an event framework. Our AI automatically adapts timeline milestones and budget allocations.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button type="button" onclick="selectEventType('wedding')" class="type-card p-5 rounded-2xl border-2 border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 text-left transition-all" data-type="wedding">
+              <div class="flex items-center justify-between mb-2">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                  <i data-lucide="heart" class="w-5 h-5"></i>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">Popular</span>
+              </div>
+              <div class="font-bold text-base mb-1">Wedding Celebration</div>
+              <div class="text-xs text-zinc-500">Multi-month milestones, tasting schedules, and rehearsal logistics.</div>
+            </button>
+
+            <button type="button" onclick="selectEventType('birthday')" class="type-card p-5 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-left transition-all bg-white dark:bg-zinc-900" data-type="birthday">
+              <div class="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center mb-2">
+                <i data-lucide="cake" class="w-5 h-5"></i>
+              </div>
+              <div class="font-bold text-base mb-1">Milestone Birthday</div>
+              <div class="text-xs text-zinc-500">High-energy party design, entertainment programming, and surprise elements.</div>
+            </button>
+
+            <button type="button" onclick="selectEventType('community')" class="type-card p-5 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-left transition-all bg-white dark:bg-zinc-900" data-type="community">
+              <div class="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center mb-2">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div class="font-bold text-base mb-1">Community / Gala</div>
+              <div class="text-xs text-zinc-500">Ticketing, permits, stage management, and volunteer coordination.</div>
+            </button>
+
+            <button type="button" onclick="selectEventType('custom')" class="type-card p-5 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-left transition-all bg-white dark:bg-zinc-900" data-type="custom">
+              <div class="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center mb-2">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              </div>
+              <div class="font-bold text-base mb-1">Custom Celebration</div>
+              <div class="text-xs text-zinc-500">Silver anniversary, corporate retreat, album release, or gallery preview.</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: DETAILS -->
+        <div id="stepContainer2" class="space-y-5 hidden">
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">When and where is the magic happening?</h2>
+          <p class="text-xs text-zinc-500">Lead times dynamically shape your backwards timeline and contract signing urgency.</p>
+
+          <div>
+            <label for="inputTitle" class="block text-sm font-semibold mb-1.5">Celebration Title</label>
+            <input id="inputTitle" type="text" value="Autumn Vineyard Wedding" class="w-full px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="inputDate" class="block text-sm font-semibold mb-1.5">Target Event Date</label>
+              <input id="inputDate" type="date" class="w-full px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label for="inputLocation" class="block text-sm font-semibold mb-1.5">City or Venue</label>
+              <input id="inputLocation" type="text" value="Napa Valley, CA" class="w-full px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: BUDGET -->
+        <div id="stepContainer3" class="space-y-6 hidden">
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Budget & Guest Scale</h2>
+          <p class="text-xs text-zinc-500">The GenAI engine guarantees a 10% locked emergency reserve and precise zero-sum distribution.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="sm:col-span-2">
+              <label for="inputBudget" class="block text-sm font-semibold mb-1.5">Total Event Budget</label>
+              <div class="relative">
+                <input id="inputBudget" type="number" min="500" step="500" value="28000" class="w-full pl-4 pr-16 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 font-bold text-lg focus:ring-2 focus:ring-indigo-500">
+                <span id="currencyBadge" class="absolute right-4 top-3 text-xs font-bold text-zinc-400">USD</span>
+              </div>
+            </div>
+            <div>
+              <label for="selectCurrency" class="block text-sm font-semibold mb-1.5">Currency</label>
+              <select id="selectCurrency" class="w-full px-3 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="CAD">CAD ($)</option>
+                <option value="AUD">AUD ($)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="JPY">JPY (¥)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="inputGuests" class="text-sm font-semibold">Estimated Guest Count</label>
+              <span id="guestCountDisplay" class="text-sm font-bold text-indigo-600 dark:text-indigo-400">85 Guests</span>
+            </div>
+            <input id="inputGuests" type="range" min="10" max="400" step="5" value="85" class="w-full h-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 accent-indigo-600 cursor-pointer">
+            <div class="flex justify-between text-[11px] text-zinc-400 mt-1">
+              <span>Intimate (10-35)</span>
+              <span>Medium (50-120)</span>
+              <span>Grand (200-400)</span>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-amber-600 shrink-0"></i>
+            <span><strong>Contingency Shield:</strong> Exactly 10% (<span id="bufferPreview">$2,800</span>) is isolated as an unspendable reserve for contract overages.</span>
+          </div>
+        </div>
+
+        <!-- STEP 4: PREFERENCES & INCLUSIONS -->
+        <div id="stepContainer4" class="space-y-5 hidden">
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Aesthetic & Special Inclusions</h2>
+          <p class="text-xs text-zinc-500">Infuse your celebration with personal flair, dietary needs, accessibility considerations, and traditions.</p>
+
+          <div>
+            <label for="inputTheme" class="block text-sm font-semibold mb-1.5">Vibe, Theme & Color Palette</label>
+            <input id="inputTheme" type="text" value="Modern Bohemian with Warm Earth Tones & Botanical Florals" class="w-full px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-indigo-500">
+          </div>
+
+          <div>
+            <label for="inputSpecial" class="block text-sm font-semibold mb-1.5">Dietary, Cultural Traditions & Accessibility Needs</label>
+            <textarea id="inputSpecial" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-indigo-500">Include vegan & gluten-free dining options; acoustic guitar ceremony prelude; zero-waste recycling.</textarea>
+          </div>
+        </div>
+
+        <!-- Progress Overlay during AI Generation -->
+        <div id="aiGenerationOverlay" class="absolute inset-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-30 hidden">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center mb-4">
+            <i data-lucide="sparkles" class="w-7 h-7 animate-spin"></i>
+          </div>
+          <h3 class="text-lg font-bold mb-1">Architecting Your Celebration</h3>
+          <p id="generationStatusMsg" class="text-xs sm:text-sm text-zinc-500 text-center max-w-sm mb-4">
+            Synthesizing zero-sum budget with locked 10% emergency contingency...
+          </p>
+          <div class="w-64 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-600 animate-pulse w-3/4"></div>
+          </div>
+        </div>
+
+        <!-- Wizard Navigation Footer -->
+        <div class="flex items-center justify-between mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+          <button id="btnPrevStep" type="button" onclick="navigateStep(-1)" class="px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-sm font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 hidden">
+            Back
+          </button>
+          <button id="btnNextStep" type="button" onclick="navigateStep(1)" class="ml-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold flex items-center gap-2 shadow-sm">
+            <span>Continue</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+          <button id="btnSubmitPlan" type="button" onclick="generateEventPlan()" class="ml-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 text-white text-sm font-bold flex items-center gap-2 shadow-md hidden">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Generate AI Event Plan</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: INTERACTIVE DASHBOARD -->
+    <section id="dashboardView" class="space-y-6 hidden">
+      <!-- Top Event Headline Card -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-2">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i>
+              <span>Live AI Celebration Blueprint</span>
+            </div>
+            <h1 id="planTitle" class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+              Autumn Vineyard Wedding
+            </h1>
+            <p id="planVibe" class="mt-1 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl leading-relaxed">
+              A thoughtfully orchestrated celebration defined by warm earth tones and joyful memories.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="sharePlanBrief()" class="px-3.5 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1.5">
+              <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+              <span id="shareBriefBtnLabel">Share Brief</span>
+            </button>
+            <button onclick="exportPlanJSON()" class="px-3.5 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1.5">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Export JSON</span>
+            </button>
+            <button onclick="resetToWizard()" class="px-3 py-2 rounded-xl text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-semibold flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Edit Event</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+          <div class="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800">
+            <div class="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-1">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-500"></i>
+              <span>Lead Time</span>
+            </div>
+            <div id="statDaysUntil" class="text-xl font-bold text-zinc-900 dark:text-white">180 Days</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800">
+            <div class="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-1">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-violet-500"></i>
+              <span>Guest Headcount</span>
+            </div>
+            <div id="statGuests" class="text-xl font-bold text-zinc-900 dark:text-white">85 Guests</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800">
+            <div class="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-1">
+              <i data-lucide="dollar-sign" class="w-3.5 h-3.5 text-emerald-500"></i>
+              <span>Total Budget</span>
+            </div>
+            <div id="statBudget" class="text-xl font-bold text-zinc-900 dark:text-white">$28,000</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800">
+            <div class="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-1">
+              <i data-lucide="check-square" class="w-3.5 h-3.5 text-amber-500"></i>
+              <span>Tasks Done</span>
+            </div>
+            <div id="statTasks" class="text-xl font-bold text-zinc-900 dark:text-white">0 / 6</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Tabs Navigation -->
+      <div class="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto pb-1" role="tablist">
+        <button onclick="switchTab('budget')" id="tabBtn-budget" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 whitespace-nowrap">
+          <i data-lucide="dollar-sign" class="w-4 h-4"></i>
+          <span>Budget Allocation</span>
+        </button>
+        <button onclick="switchTab('timeline')" id="tabBtn-timeline" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 whitespace-nowrap">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span>Backwards Timeline</span>
+        </button>
+        <button onclick="switchTab('vendors')" id="tabBtn-vendors" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 whitespace-nowrap">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Vendor Checklist</span>
+        </button>
+        <button onclick="switchTab('ideas')" id="tabBtn-ideas" class="flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 whitespace-nowrap">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Bespoke Ideas</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: BUDGET OVERVIEW -->
+      <div id="tabContent-budget" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold">Dynamic Budget Sliders</h2>
+              <span id="budgetBalancePill" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300">
+                100.0% Allocated (✓ Balanced)
+              </span>
+            </div>
+            <p class="text-xs text-zinc-500 mt-1">
+              Adjust any slider. Unlocked categories automatically re-balance while the 10% emergency buffer stays strictly locked.
+            </p>
+          </div>
+          <button onclick="autoRebalanceBudget()" class="px-3.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-semibold hover:bg-zinc-100 flex items-center gap-1.5 self-start sm:self-auto">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Reset to Standard Ratio</span>
+          </button>
+        </div>
+
+        <!-- Sliders Container -->
+        <div id="budgetSlidersList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamically injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- TAB 2: TIMELINE VIEW -->
+      <div id="tabContent-timeline" class="space-y-6 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold">Backwards Timeline Milestones</h2>
+              <span id="timelineCounterPill" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                0 of 6 Done
+              </span>
+            </div>
+            <p class="text-xs text-zinc-500 mt-1">Sequenced backwards from the event date to eliminate costly rush deliveries.</p>
+          </div>
+          <button onclick="promptAddCustomTask()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 flex items-center gap-1.5 self-start sm:self-auto">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Add Custom Task</span>
+          </button>
+        </div>
+
+        <div id="timelineTasksList" class="space-y-3">
+          <!-- Dynamically injected -->
+        </div>
+      </div>
+
+      <!-- TAB 3: VENDOR CHECKLIST VIEW -->
+      <div id="tabContent-vendors" class="space-y-6 hidden">
+        <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold">Vendor Checklist & Contract Audit</h2>
+            <p class="text-xs text-zinc-500 mt-0.5">High-impact consultation questions and contract gotchas to avoid unexpected fees.</p>
+          </div>
+          <div id="vendorSecuredBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 self-start sm:self-auto">
+            0 of 3 Vendors Booked
+          </div>
+        </div>
+
+        <div id="vendorCardsList" class="space-y-4">
+          <!-- Dynamically injected -->
+        </div>
+      </div>
+
+      <!-- TAB 4: BESPOKE IDEAS GALLERY -->
+      <div id="tabContent-ideas" class="space-y-6 hidden">
+        <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold">5 Bespoke Celebration Concepts</h2>
+            <p class="text-xs text-zinc-500 mt-0.5">Custom ideas tailored to your theme, guest scale, and dietary specifications.</p>
+          </div>
+          <div id="favoritesBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 self-start sm:self-auto">
+            1 Favorited
+          </div>
+        </div>
+
+        <div id="ideasCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Dynamically injected -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FLOATING AI EVENT CO-PILOT BUTTON -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <button id="openCopilotBtn" onclick="toggleCopilot(true)" class="flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 text-white font-semibold text-sm shadow-xl hover:shadow-2xl hover:scale-105 transition-all">
+      <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-white animate-spin" style="animation-duration: 8s;"></i>
+      </div>
+      <span>AI Event Co-Pilot</span>
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+    </button>
+  </div>
+
+  <!-- EMBEDDED AI CO-PILOT CHAT DRAWER -->
+  <div id="copilotDrawer" class="fixed bottom-4 right-4 z-50 w-[94vw] sm:w-[440px] max-h-[82vh] h-[620px] flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl overflow-hidden hidden transition-all">
+    <!-- Header -->
+    <div class="p-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm">AI Event Co-Pilot</h3>
+          <p class="text-[11px] text-white/80">Dynamic Plan Refinement Engine</p>
+        </div>
+      </div>
+      <button onclick="toggleCopilot(false)" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Quick Prompt Pills -->
+    <div class="p-2.5 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+      <button onclick="sendCopilotQuick('Make the catering vegetarian-only and cut decor budget by 15%')" class="text-[11px] font-medium whitespace-nowrap bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 px-2.5 py-1 rounded-full shrink-0">
+        🥦 Vegetarian Catering & Cut Decor
+      </button>
+      <button onclick="sendCopilotQuick('Add a sparkler send-off task to day-of timeline')" class="text-[11px] font-medium whitespace-nowrap bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 px-2.5 py-1 rounded-full shrink-0">
+        ✨ Add Sparkler Send-Off Task
+      </button>
+      <button onclick="sendCopilotQuick('What questions should I ask during venue walkthrough?')" class="text-[11px] font-medium whitespace-nowrap bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 px-2.5 py-1 rounded-full shrink-0">
+        🏰 Venue Contract Walkthrough
+      </button>
+    </div>
+
+    <!-- Messages List -->
+    <div id="copilotMessagesList" class="flex-1 p-4 overflow-y-auto space-y-3.5 bg-zinc-50/50 dark:bg-zinc-950/40 text-xs custom-scrollbar">
+      <div class="flex gap-2.5 mr-auto max-w-[90%]">
+        <div class="w-7 h-7 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0">
+          <i data-lucide="bot" class="w-4 h-4"></i>
+        </div>
+        <div class="p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl rounded-tl-none leading-relaxed shadow-sm">
+          Welcome! I've engineered your celebration plan with strict budget protection (including our 10% emergency buffer). Tell me anything you'd like to refine!
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Box -->
+    <form onsubmit="handleCopilotSubmit(event)" class="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+      <input id="copilotTextInput" type="text" placeholder="e.g. Cut decor by 20% or add vegan menu..." class="flex-1 px-3.5 py-2 text-xs rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button type="submit" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+        <i data-lucide="send" class="w-4 h-4"></i>
+      </button>
+    </form>
+  </div>
+
+  <!-- APPLICATION LOGIC IN JAVASCRIPT -->
+  <script>
+    // State management
+    let currentStep = 1;
+    let selectedType = 'wedding';
+    let lockedCategories = new Set(['b-contingency']);
+    let activePlan = null;
+
+    // Set default target date to 6 months out
+    const defaultDate = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    document.getElementById('inputDate').value = defaultDate;
+
+    // Listeners
+    document.getElementById('inputGuests').addEventListener('input', (e) => {
+      document.getElementById('guestCountDisplay').innerText = `${e.target.value} Guests`;
+    });
+
+    document.getElementById('inputBudget').addEventListener('input', (e) => {
+      const b = Number(e.target.value) || 0;
+      const curr = document.getElementById('selectCurrency').value;
+      const sym = curr === 'USD' ? '$' : curr;
+      document.getElementById('bufferPreview').innerText = `${sym}${Math.round(b * 0.10).toLocaleString()}`;
+    });
+
+    document.getElementById('selectCurrency').addEventListener('change', (e) => {
+      document.getElementById('currencyBadge').innerText = e.target.value;
+      const b = Number(document.getElementById('inputBudget').value) || 0;
+      const sym = e.target.value === 'USD' ? '$' : e.target.value;
+      document.getElementById('bufferPreview').innerText = `${sym}${Math.round(b * 0.10).toLocaleString()}`;
+    });
+
+    // Theme toggle
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    function selectEventType(type) {
+      selectedType = type;
+      document.querySelectorAll('.type-card').forEach(card => {
+        if (card.dataset.type === type) {
+          card.classList.add('border-indigo-600', 'bg-indigo-50/40', 'dark:bg-indigo-950/30');
+          card.classList.remove('border-zinc-200', 'dark:border-zinc-800');
+        } else {
+          card.classList.remove('border-indigo-600', 'bg-indigo-50/40', 'dark:bg-indigo-950/30');
+          card.classList.add('border-zinc-200', 'dark:border-zinc-800');
+        }
+      });
+      if (type === 'birthday') {
+        document.getElementById('inputTitle').value = 'Milestone 40th Birthday Soirée';
+        document.getElementById('inputBudget').value = 7500;
+        document.getElementById('inputGuests').value = 45;
+        document.getElementById('guestCountDisplay').innerText = '45 Guests';
+        document.getElementById('inputTheme').value = 'Speakeasy Retro Glamour with Live Jazz Trio';
+      } else if (type === 'community') {
+        document.getElementById('inputTitle').value = 'Annual Artisan Harvest Fair & Gala';
+        document.getElementById('inputBudget').value = 16000;
+        document.getElementById('inputGuests').value = 250;
+        document.getElementById('guestCountDisplay').innerText = '250 Guests';
+        document.getElementById('inputTheme').value = 'Sustainable Eco-Market with Upcycled Wood & Interactive Workshops';
+      }
+    }
+
+    function navigateStep(delta) {
+      currentStep = Math.max(1, Math.min(4, currentStep + delta));
+
+      for (let i = 1; i <= 4; i++) {
+        const container = document.getElementById(`stepContainer${i}`);
+        const badge = document.getElementById(`stepBadge${i}`);
+        if (i === currentStep) {
+          container.classList.remove('hidden');
+          badge.className = "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900/50";
+        } else if (i < currentStep) {
+          container.classList.add('hidden');
+          badge.className = "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-emerald-600 text-white";
+        } else {
+          container.classList.add('hidden');
+          badge.className = "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-300 dark:border-zinc-700";
+        }
+      }
+
+      document.getElementById('stepProgressBar').style.width = `${(currentStep / 4) * 100}%`;
+      document.getElementById('btnPrevStep').classList.toggle('hidden', currentStep === 1);
+      document.getElementById('btnNextStep').classList.toggle('hidden', currentStep === 4);
+      document.getElementById('btnSubmitPlan').classList.toggle('hidden', currentStep !== 4);
+      lucide.createIcons();
+    }
+
+    async function generateEventPlan() {
+      const overlay = document.getElementById('aiGenerationOverlay');
+      overlay.classList.remove('hidden');
+
+      const payload = {
+        eventType: selectedType,
+        title: document.getElementById('inputTitle').value,
+        eventDate: document.getElementById('inputDate').value,
+        location: document.getElementById('inputLocation').value,
+        guestCount: Number(document.getElementById('inputGuests').value),
+        totalBudget: Number(document.getElementById('inputBudget').value),
+        currency: document.getElementById('selectCurrency').value,
+        themeStyle: document.getElementById('inputTheme').value,
+        specialRequests: document.getElementById('inputSpecial').value
+      };
+
+      try {
+        const res = await fetch('/api/plan/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const plan = await res.json();
+        activePlan = plan;
+        renderDashboard(plan);
+
+        document.getElementById('wizardView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.remove('hidden');
+      } catch (err) {
+        alert("Failed to generate plan: " + err);
+      } finally {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function renderDashboard(plan) {
+      document.getElementById('planTitle').innerText = plan.summary.eventTitle;
+      document.getElementById('planVibe').innerText = plan.summary.vibeStatement;
+      document.getElementById('statDaysUntil').innerText = `${plan.summary.daysUntilEvent} Days`;
+      document.getElementById('statGuests').innerText = `${plan.summary.targetGuestCount} Guests`;
+      
+      const sym = plan.summary.currency === 'USD' ? '$' : plan.summary.currency;
+      document.getElementById('statBudget').innerText = `${sym}${plan.summary.totalBudget.toLocaleString()}`;
+
+      renderBudgetSection(plan);
+      renderTimelineSection(plan);
+      renderVendorSection(plan);
+      renderIdeasSection(plan);
+      lucide.createIcons();
+    }
+
+    function renderBudgetSection(plan) {
+      const container = document.getElementById('budgetSlidersList');
+      container.innerHTML = '';
+      const sym = plan.summary.currency === 'USD' ? '$' : plan.summary.currency;
+
+      plan.budgetBreakdown.forEach(item => {
+        const isContingency = item.category === 'CONTINGENCY';
+        const isLocked = lockedCategories.has(item.id) || isContingency;
+
+        const card = document.createElement('div');
+        card.className = `p-5 rounded-2xl border transition-all ${isContingency ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'}`;
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-sm">${item.label}</span>
+                ${isContingency ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">Locked 10% Reserve</span>' : ''}
+              </div>
+              <div class="text-xl font-bold mt-1">${sym}${Math.round(item.allocatedAmount).toLocaleString()}</div>
+            </div>
+            <button onclick="toggleCategoryLock('${item.id}')" ${isContingency ? 'disabled' : ''} class="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 ${isLocked ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700' : ''}">
+              <i data-lucide="${isLocked ? 'lock' : 'unlock'}" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <div class="flex justify-between text-xs text-zinc-500 mb-1">
+            <span>Allocation</span>
+            <span class="font-bold text-indigo-600 dark:text-indigo-400">${item.percentage}%</span>
+          </div>
+          <input type="range" min="2" max="60" step="0.5" value="${item.percentage}" ${isLocked ? 'disabled' : ''} oninput="handleSliderChange('${item.id}', this.value)" class="w-full h-2 rounded-lg bg-zinc-200 dark:bg-zinc-700 accent-indigo-600 ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}">
+          <p class="text-xs text-zinc-500 mt-2 line-clamp-2">${item.notes}</p>
+          ${item.costSavingTip ? `
+            <div class="mt-3 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 text-xs flex items-start gap-1.5">
+              <i data-lucide="trending-down" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+              <span><strong>Cost-Saving Tip:</strong> ${item.costSavingTip}</span>
+            </div>
+          ` : ''}
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function toggleCategoryLock(id) {
+      if (id === 'b-contingency') return;
+      if (lockedCategories.has(id)) lockedCategories.delete(id);
+      else lockedCategories.add(id);
+      renderBudgetSection(activePlan);
+    }
+
+    function handleSliderChange(id, val) {
+      const numVal = parseFloat(val);
+      const target = activePlan.budgetBreakdown.find(b => b.id === id);
+      if (!target) return;
+
+      const oldVal = target.percentage;
+      const diff = numVal - oldVal;
+
+      const freeItems = activePlan.budgetBreakdown.filter(b => !lockedCategories.has(b.id) && b.id !== id && b.category !== 'CONTINGENCY');
+      if (freeItems.length > 0) {
+        const freeSum = freeItems.reduce((acc, curr) => acc + curr.percentage, 0);
+        freeItems.forEach(item => {
+          const ratio = freeSum > 0 ? item.percentage / freeSum : 1 / freeItems.length;
+          item.percentage = Math.max(1, Math.round((item.percentage - (diff * ratio)) * 10) / 10);
+          item.allocatedAmount = Math.round(activePlan.summary.totalBudget * (item.percentage / 100));
+        });
+      }
+
+      target.percentage = numVal;
+      target.allocatedAmount = Math.round(activePlan.summary.totalBudget * (numVal / 100));
+
+      const totalPct = activePlan.budgetBreakdown.reduce((sum, item) => sum + item.percentage, 0);
+      const rounded = Math.round(totalPct * 10) / 10;
+      document.getElementById('budgetBalancePill').innerText = `${rounded}% Allocated (${Math.abs(rounded - 100) < 0.2 ? '✓ Balanced' : 'Adjusting'})`;
+
+      renderBudgetSection(activePlan);
+    }
+
+    function autoRebalanceBudget() {
+      const total = activePlan.summary.totalBudget;
+      activePlan.budgetBreakdown.forEach(item => {
+        if (item.category === 'CONTINGENCY') {
+          item.percentage = 10.0;
+          item.allocatedAmount = Math.round(total * 0.10);
+        } else {
+          item.percentage = 18.0;
+          item.allocatedAmount = Math.round(total * 0.18);
+        }
+      });
+      document.getElementById('budgetBalancePill').innerText = '100.0% Allocated (✓ Balanced)';
+      renderBudgetSection(activePlan);
+    }
+
+    function renderTimelineSection(plan) {
+      const container = document.getElementById('timelineTasksList');
+      container.innerHTML = '';
+      const doneCount = plan.timeline.filter(t => t.completed).length;
+      document.getElementById('statTasks').innerText = `${doneCount} / ${plan.timeline.length}`;
+      document.getElementById('timelineCounterPill').innerText = `${doneCount} of ${plan.timeline.length} Completed`;
+
+      plan.timeline.forEach(task => {
+        const taskCard = document.createElement('div');
+        taskCard.className = `p-4 rounded-2xl border transition-all flex items-start gap-3.5 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 ${task.completed ? 'opacity-60 bg-zinc-50' : ''}`;
+        taskCard.innerHTML = `
+          <button onclick="toggleTaskCompletion('${task.id}')" class="mt-0.5 text-zinc-400 hover:text-indigo-600">
+            <i data-lucide="${task.completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5 ${task.completed ? 'text-emerald-600' : ''}"></i>
+          </button>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-bold text-sm ${task.completed ? 'line-through text-zinc-400' : ''}">${task.title}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' : 'bg-zinc-100 text-zinc-600'}">${task.priority.toUpperCase()}</span>
+              <span class="text-[11px] text-zinc-400">${task.suggestedDueDaysBefore === 0 ? 'Day of Event' : `${task.suggestedDueDaysBefore} days before`}</span>
+            </div>
+            <p class="text-xs text-zinc-500">${task.description}</p>
+          </div>
+          <span class="text-xs text-zinc-400 hidden sm:inline bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">${task.phaseLabel}</span>
+        `;
+        container.appendChild(taskCard);
+      });
+      lucide.createIcons();
+    }
+
+    function toggleTaskCompletion(taskId) {
+      const target = activePlan.timeline.find(t => t.id === taskId);
+      if (target) {
+        target.completed = !target.completed;
+        renderTimelineSection(activePlan);
+      }
+    }
+
+    function promptAddCustomTask() {
+      const taskName = prompt("Enter custom milestone title:");
+      if (!taskName) return;
+      activePlan.timeline.unshift({
+        id: `t-user-${Date.now()}`,
+        phase: 'phase_mid',
+        phaseLabel: 'Upcoming Milestone',
+        title: taskName,
+        description: 'Organizer custom task.',
+        suggestedDueDaysBefore: 14,
+        priority: 'medium',
+        completed: false,
+        category: 'GENERAL'
+      });
+      renderTimelineSection(activePlan);
+    }
+
+    function renderVendorSection(plan) {
+      const container = document.getElementById('vendorCardsList');
+      container.innerHTML = '';
+      const booked = plan.vendorChecklist.filter(v => v.status === 'booked').length;
+      document.getElementById('vendorSecuredBadge').innerText = `${booked} of ${plan.vendorChecklist.length} Vendors Secured`;
+
+      plan.vendorChecklist.forEach(v => {
+        const card = document.createElement('div');
+        card.className = "p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-base">${v.vendorRole}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${v.status === 'booked' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">${v.status.replace('_', ' ').toUpperCase()}</span>
+              </div>
+              <div class="text-xs text-zinc-500 mt-1">Target Booking: <strong>${v.targetBookingLeadWeeks} weeks prior</strong> • Est. Range: <strong>${v.estimatedCostRange}</strong></div>
+            </div>
+            <select onchange="updateVendorStatus('${v.id}', this.value)" class="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800">
+              <option value="to_contact" ${v.status === 'to_contact' ? 'selected' : ''}>To Contact</option>
+              <option value="contacted" ${v.status === 'contacted' ? 'selected' : ''}>Interviewing</option>
+              <option value="quoted" ${v.status === 'quoted' ? 'selected' : ''}>Quote Received</option>
+              <option value="booked" ${v.status === 'booked' ? 'selected' : ''}>Booked & Signed</option>
+            </select>
+          </div>
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+            <div class="text-xs font-bold text-indigo-600 flex items-center gap-1.5">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+              <span>Consultation Interview Questions</span>
+            </div>
+            <ul class="space-y-1 text-xs text-zinc-600 dark:text-zinc-400 pl-4 list-disc">
+              ${v.questionsToAsk.map(q => `<li>${q}</li>`).join('')}
+            </ul>
+            <div class="text-xs font-bold text-rose-600 flex items-center gap-1.5 pt-2">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+              <span>Contract Red Flag Reminders</span>
+            </div>
+            <ul class="space-y-1 text-xs text-rose-800 dark:text-rose-300 pl-4 list-disc">
+              ${v.contractReviewReminders.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function updateVendorStatus(id, newStatus) {
+      const v = activePlan.vendorChecklist.find(item => item.id === id);
+      if (v) {
+        v.status = newStatus;
+        renderVendorSection(activePlan);
+      }
+    }
+
+    function renderIdeasSection(plan) {
+      const container = document.getElementById('ideasCardsGrid');
+      container.innerHTML = '';
+      const favs = plan.personalizedIdeas.filter(i => i.isFavorite).length;
+      document.getElementById('favoritesBadge').innerText = `${favs} Favorited`;
+
+      plan.personalizedIdeas.forEach(idea => {
+        const card = document.createElement('div');
+        card.className = "p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between mb-2">
+              <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <button onclick="toggleFavoriteIdea('${idea.id}')" class="text-zinc-400 hover:text-rose-500">
+                <i data-lucide="heart" class="w-4 h-4 ${idea.isFavorite ? 'fill-rose-500 text-rose-500' : ''}"></i>
+              </button>
+            </div>
+            <h3 class="font-bold text-base mb-1">${idea.title}</h3>
+            <p class="text-xs text-zinc-500 mb-3">${idea.description}</p>
+          </div>
+          <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
+            <div class="text-[11px] text-zinc-400"><strong>Why it fits:</strong> ${idea.whyItFits}</div>
+            <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-600 pt-1">
+              <span>${idea.estimatedCostImpact} Cost Impact</span>
+              <span class="text-zinc-400">${idea.category}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function toggleFavoriteIdea(id) {
+      const item = activePlan.personalizedIdeas.find(i => i.id === id);
+      if (item) {
+        item.isFavorite = !item.isFavorite;
+        renderIdeasSection(activePlan);
+      }
+    }
+
+    function switchTab(tabId) {
+      ['budget', 'timeline', 'vendors', 'ideas'].forEach(t => {
+        document.getElementById(`tabContent-${t}`).classList.toggle('hidden', t !== tabId);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tabId) {
+          btn.className = "flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 whitespace-nowrap";
+        } else {
+          btn.className = "flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-xl border-b-2 border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 whitespace-nowrap";
+        }
+      });
+      lucide.createIcons();
+    }
+
+    function toggleCopilot(open) {
+      document.getElementById('copilotDrawer').classList.toggle('hidden', !open);
+      lucide.createIcons();
+    }
+
+    async function sendCopilotQuick(promptText) {
+      document.getElementById('copilotTextInput').value = promptText;
+      handleCopilotSubmit(new Event('submit'));
+    }
+
+    async function handleCopilotSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('copilotTextInput');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const list = document.getElementById('copilotMessagesList');
+      list.innerHTML += `
+        <div class="flex gap-2.5 ml-auto max-w-[85%] flex-row-reverse">
+          <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+            <i data-lucide="user" class="w-3.5 h-3.5"></i>
+          </div>
+          <div class="p-3 bg-indigo-600 text-white rounded-2xl rounded-tr-none shadow-sm leading-relaxed">${text}</div>
+        </div>
+      `;
+      list.scrollTop = list.scrollHeight;
+      lucide.createIcons();
+
+      try {
+        const res = await fetch('/api/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPlan: activePlan, userPrompt: text })
+        });
+        const data = await res.json();
+
+        list.innerHTML += `
+          <div class="flex gap-2.5 mr-auto max-w-[90%]">
+            <div class="w-7 h-7 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-700 flex items-center justify-center shrink-0">
+              <i data-lucide="bot" class="w-4 h-4"></i>
+            </div>
+            <div class="p-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl rounded-tl-none leading-relaxed shadow-sm">
+              ${data.replyMessage}
+            </div>
+          </div>
+        `;
+        list.scrollTop = list.scrollHeight;
+
+        if (data.updatedPlan) {
+          activePlan = { ...activePlan, ...data.updatedPlan };
+          renderDashboard(activePlan);
+        }
+      } catch (err) {
+        alert("Copilot error: " + err);
+      }
+      lucide.createIcons();
+    }
+
+    function sharePlanBrief() {
+      const summaryText = `🎉 ${activePlan.summary.eventTitle}\n📅 Days until event: ${activePlan.summary.daysUntilEvent}\n👥 Guests: ${activePlan.summary.targetGuestCount}\n💰 Budget: ${activePlan.summary.currency} ${activePlan.summary.totalBudget.toLocaleString()}\n✨ Vibe: ${activePlan.summary.vibeStatement}`;
+      navigator.clipboard.writeText(summaryText);
+      document.getElementById('shareBriefBtnLabel').innerText = 'Copied Brief!';
+      setTimeout(() => {
+        document.getElementById('shareBriefBtnLabel').innerText = 'Share Brief';
+      }, 2500);
+    }
+
+    function exportPlanJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activePlan, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `${activePlan.summary.eventTitle.replace(/\\s+/g, '_')}_Plan.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function resetToWizard() {
+      document.getElementById('dashboardView').classList.add('hidden');
+      document.getElementById('wizardView').classList.remove('hidden');
+      currentStep = 1;
+      navigateStep(0);
+    }
+
+    // Initialize Lucide icons on load
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
