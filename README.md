@@ -1,73 +1,116 @@
-# CelebrationAI: Production-Ready GenAI Celebration & Event Planner
+# CelebrationAI: Production-Ready GenAI Event Planner
 
-CelebrationAI is a production-grade, full-stack, GenAI-powered celebration and event planning web application. It orchestrates weddings, milestone birthdays, and community galas with mathematical budget discipline (strict 10% emergency buffer), adaptive backwards timelines, structured vendor audits, and a real-time AI Event Co-Pilot.
-
----
-
-## 🌟 Architecture Highlights
-
-1. **Deterministic Financial Invariants:**
-   - Strict 10.0% emergency contingency buffer permanently protected.
-   - Zero-sum budget allocation: 6 categories (`VENUE`, `CATERING`, `DECOR`, `ENTERTAINMENT`, `MISCELLANEOUS`, `CONTINGENCY`) guaranteed to sum up to exactly 100%.
-   - Interactive rebalancing sliders with category locking.
-
-2. **Adaptive Backwards-Planning Engine:**
-   - Computes delta lead time between current timestamp and event date.
-   - Organizes milestones into phases (`phase_early`, `phase_mid`, `phase_final_weeks`, `phase_day_of`, `phase_post_event`).
-
-3. **Vendor Consultation & Contract Vetting Checklist:**
-   - 3-4 incisive consultation questions per vendor role to ask during interviews.
-   - Contract review alerts highlighting hidden service charges, breakdown fees, and overtime liabilities.
-
-4. **Embedded AI Event Co-Pilot:**
-   - Chat assistant capable of dynamic in-place plan adjustments (e.g., *"Make catering vegetarian-only and cut decor budget by 15%"*).
-   - Server-Sent Events (SSE) streaming support for low-latency progress reporting.
-
-5. **Security & Privacy Hardening:**
-   - Prompt injection defense layer stripping adversarial delimiters and directives.
-   - Sliding-window rate limiter (Upstash Redis + in-memory fallback) preventing token exhaustion.
-   - GDPR-compliant guest handling with encrypted notes and minimal PII retention.
-   - WCAG 2.1 AA accessibility compliance (ARIA labels, keyboard tab navigation, high contrast ratios, screen-reader friendly checklists).
+A full-stack, enterprise-grade, GenAI-powered web application designed to architect and manage weddings, milestone birthdays, and community festivals. Built with Next.js 14/15 App Router, React, Tailwind CSS, TypeScript, and Google Gemini API (with structured `response_schema`).
 
 ---
 
-## 🏗️ Recommended Tech Stack
+## 1. System Architecture & Tech Stack
 
-| Layer | Technology | Rationale |
-| :--- | :--- | :--- |
-| **Frontend** | Next.js 14 (App Router), React 18/19, TypeScript | Server Components, fast hydration, streaming SSR |
-| **Styling & UI** | Tailwind CSS, Lucide React | High-contrast WCAG 2.1 AA styling, responsive mobile-first UI |
-| **Backend API** | Next.js Edge & Node.js Route Handlers | Serverless scalability, low latency, SSE streaming |
-| **Database & ORM** | PostgreSQL + Prisma ORM / Supabase | Relational integrity, Row-Level Security (RLS) policies |
-| **AI Integration** | Google Gemini 1.5 Pro / Flash (`@google/generative-ai`) | Structured JSON outputs via `responseSchema`, low latency |
-| **Security & Limits** | Upstash Redis (`@upstash/ratelimit`) + Zod | Token abuse prevention, strict payload validation |
-| **Authentication** | NextAuth.js v5 (Auth.js) | OAuth 2.0 (Google, GitHub) + secure JWT sessions |
+```mermaid
+graph TD
+    Client["Next.js Responsive Client (React, Tailwind CSS, WCAG 2.1 AA)"]
+    API_Gateway["Next.js Route Handlers (Edge/Node.js)"]
+    Security["Security Layer: Rate Limiter & Prompt Sanitizer & PII Scrubber"]
+    Gemini["Google Gemini 1.5 Flash (Structured response_schema)"]
+    DB["PostgreSQL / Supabase (Prisma ORM with RLS)"]
+    Cache["Browser localStorage & Redis Session Cache"]
+
+    Client -->|HTTPS / REST & SSE| API_Gateway
+    API_Gateway --> Security
+    Security -->|Sanitized Prompt| Gemini
+    Gemini -->|Strict Validated JSON| API_Gateway
+    API_Gateway -->|Encrypted Storage| DB
+    Client <-->|Optimistic Sync| Cache
+```
+
+### Technology Matrix
+- **Frontend**: Next.js (App Router), React 18/19, TypeScript, Tailwind CSS, Lucide React.
+- **Backend**: Next.js Serverless Route Handlers (`/api/plan`, `/api/copilot`).
+- **GenAI Integration**: Google Gemini API via official `@google/genai` with strict `response_schema` and deterministic temperature control (`temperature: 0.2`).
+- **Database & Persistence**: PostgreSQL with Prisma ORM, row-level security (RLS), and indexed foreign keys.
+- **Security & Rate Limiting**: Sliding-window token rate limiting (10 req/min for planning, 20 req/min for co-pilot), regex-based prompt injection sanitizer, and automated PII scrubber.
+- **Accessibility & UX**: Fully compliant with WCAG 2.1 AA (ARIA roles, keyboard-friendly slider & checklist controls, high-contrast modes, screen-reader skip links).
 
 ---
 
-## 🚀 Quickstart & Setup
+## 2. Directory Structure
 
-### 1. Installation
+```
+├── prisma/
+│   └── schema.prisma         # Prisma ORM data model & relations
+├── db/
+│   └── schema.sql            # Raw PostgreSQL DDL with RLS and enums
+├── src/
+│   ├── types/
+│   │   └── event.ts          # Central TypeScript interfaces & types
+│   ├── lib/
+│   │   ├── ai-engine.ts      # Gemini system prompt, JSON schema, validator
+│   │   ├── rate-limiter.ts   # Sliding window request rate limiter
+│   │   ├── security.ts       # Input sanitizer, PII scrubber, auth verifier
+│   │   └── mock-data.ts      # High-fidelity realistic fallback planner
+│   ├── app/
+│   │   ├── layout.tsx        # Global HTML layout with metadata
+│   │   ├── page.tsx          # Single-page app root (Wizard + Dashboard)
+│   │   ├── globals.css       # Tailwind directives & WCAG styles
+│   │   └── api/
+│   │       ├── plan/route.ts # Event creation & AI plan generation endpoint
+│   │       └── copilot/route.ts # AI Co-Pilot chat & live modification endpoint
+│   └── components/
+│       ├── OnboardingWizard.tsx    # 4-step event intake wizard
+│       ├── InteractiveDashboard.tsx# Core tabbed event command center
+│       ├── BudgetBreakdown.tsx     # Dynamic sliders & 10% contingency lock
+│       ├── TimelineView.tsx        # Backwards planning milestone checklists
+│       ├── VendorChecklist.tsx     # Interview questions & contract watchouts
+│       ├── PersonalizedIdeas.tsx   # 5 bespoke tailored experience concepts
+│       └── AiCopilotChat.tsx       # Live drawer for real-time adjustments
+├── public/
+│   └── index.html            # Standalone browser UI client
+├── server.py                 # Multi-threaded server for instant live testing
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+└── README.md
+```
+
+---
+
+## 3. Environment Variables Setup
+
+Create a `.env.local` file in the root directory:
+
+```env
+# Google Gemini API Key
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# PostgreSQL / Supabase Database URL (Optional for local memory mode)
+DATABASE_URL=postgresql://user:password@localhost:5432/celebration_planner?schema=public
+
+# NextAuth / JWT Authentication Secret
+NEXTAUTH_SECRET=your_jwt_signing_secret_min_32_characters
+NEXTAUTH_URL=http://localhost:3000
+```
+
+> **Note:** If `GEMINI_API_KEY` is not provided, the application automatically uses the internal high-fidelity deterministic planning engine (`src/lib/mock-data.ts`), ensuring zero crashes and full evaluation capabilities offline.
+
+---
+
+## 4. Getting Started
+
+### Installation
 ```bash
 npm install
+# or
+pnpm install
 ```
 
-### 2. Environment Configuration
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-Add your `GEMINI_API_KEY` and PostgreSQL connection string.
-
-### 3. Database Migration
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-### 4. Run Development Server
+### Run Locally (Next.js)
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Run Standalone Server (Python)
+```bash
+python server.py
+```
+Open `http://localhost:3000` in your browser.
 

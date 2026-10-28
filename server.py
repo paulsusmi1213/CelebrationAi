@@ -1,474 +1,390 @@
+#!/usr/bin/env python3
+"""
+CelebrationAI Live Development Server
+Serves static frontend assets and handles GenAI API endpoints (/api/plan, /api/copilot)
+"""
+
 import http.server
 import socketserver
 import json
 import os
 import sys
-import math
-from datetime import datetime
 import urllib.request
 import urllib.error
+from datetime import datetime, date
 
-PORT = int(os.environ.get("PORT", 3000))
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+PORT = 3000
+PUBLIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public')
 
-def sanitize_text(text):
-    if not text:
-        return ""
-    # Strip bad characters
-    bad_chars = ["<script>", "</script>", "```", "<|"]
-    res = str(text)
-    for b in bad_chars:
-        res = res.replace(b, "")
-    return res.strip()
-
-def check_injection(text):
-    if not text:
-        return False
-    lower = text.lower()
-    suspicious = [
-        "ignore previous instructions",
-        "ignore all previous",
-        "disregard all rules",
-        "system prompt override",
-        "jailbreak",
-        "dan mode",
-    ]
-    return any(s in lower for s in suspicious)
-
-def enforce_budget_invariants(items, total_budget):
-    # Strictly 10% contingency
-    contingency_pct = 10.0
-    contingency_amount = round(total_budget * 0.10, 2)
-
-    non_contingency = [i for i in items if i.get("category") != "CONTINGENCY"]
-    total_non_pct = sum(i.get("percentage", 0) for i in non_contingency)
-    target_non_pct = 90.0
-
-    normalized = []
-    for item in non_contingency:
-        old_pct = item.get("percentage", 0)
-        norm_pct = (old_pct / total_non_pct * target_non_pct) if total_non_pct > 0 else (target_non_pct / len(non_contingency))
-        norm_pct = round(norm_pct, 1)
-        allocated = round(total_budget * (norm_pct / 100.0), 2)
-        normalized.append({
-            **item,
-            "percentage": norm_pct,
-            "allocatedAmount": allocated,
-            "spentAmount": item.get("spentAmount", 0)
-        })
-
-    contingency_item = {
-        "id": "b-contingency",
-        "category": "CONTINGENCY",
-        "label": "Emergency Contingency (Strict 10%)",
-        "percentage": 10.0,
-        "allocatedAmount": contingency_amount,
-        "spentAmount": 0,
-        "notes": "Preserved exclusively for unforeseen vendor surcharges, weather mitigations, and last-minute guest additions.",
-        "costSavingTip": "Do not allocate or commit this fund until 72 hours before the event date."
-    }
-    normalized.append(contingency_item)
-    return normalized
-
-def generate_plan(data):
-    event_type = data.get("eventType", "wedding")
-    title = sanitize_text(data.get("title", "Celebration Event"))
-    date_str = data.get("eventDate", datetime.now().strftime("%Y-%m-%d"))
-    location = sanitize_text(data.get("location", "City Venue"))
-    guest_count = int(data.get("guestCount", 50))
-    total_budget = float(data.get("totalBudget", 10000))
-    currency = data.get("currency", "USD")
-    theme = sanitize_text(data.get("themeStyle", "Modern Elegance"))
-    special = sanitize_text(data.get("specialRequests", ""))
-
-    # Calculate days until event
-    try:
-        event_dt = datetime.strptime(date_str, "%Y-%m-%d")
-        diff = (event_dt - datetime.now()).days
-        days_until = max(1, diff)
-    except Exception:
-        days_until = 90
-
-    # Initial percentages (sum to 100%)
-    # Venue: 30%, Catering: 35%, Decor: 12%, Entertainment: 8%, Misc: 5%, Contingency: 10%
-    b = total_budget
-    raw_budget = [
-        {
-            "id": "b-venue",
-            "category": "VENUE",
-            "label": "Venue Rental & Location Permits",
-            "percentage": 30.0,
-            "allocatedAmount": round(b * 0.30, 2),
-            "spentAmount": 0,
-            "notes": f"Securing an accessible, climate-controlled venue in {location} for {guest_count} guests.",
-            "costSavingTip": "Ask for non-peak arrival windows or bundle tables and chairs with the venue package to waive rental surcharges."
-        },
-        {
-            "id": "b-catering",
-            "category": "CATERING",
-            "label": "Catering, Beverages & Service Staff",
-            "percentage": 35.0,
-            "allocatedAmount": round(b * 0.35, 2),
-            "spentAmount": 0,
-            "notes": f"Includes culinary pairings, celebratory beverages, and professional service team accommodating: {special or 'standard and dietary options'}.",
-            "costSavingTip": "Opt for elevated grazing tables or family-style service instead of formal plated courses to save 18% on staffing."
-        },
-        {
-            "id": "b-decor",
-            "category": "DECOR",
-            "label": "Floral, Styling, Lighting & Signage",
-            "percentage": 12.0,
-            "allocatedAmount": round(b * 0.12, 2),
-            "spentAmount": 0,
-            "notes": f"Bespoke floral arrangements, warm ambient up-lighting, printed welcome signs matching {theme}.",
-            "costSavingTip": "Repurpose ceremony/arrival floral installations for the main dining head table."
-        },
-        {
-            "id": "b-entertainment",
-            "category": "ENTERTAINMENT",
-            "label": "Music, Sound System & Photography",
-            "percentage": 8.0,
-            "allocatedAmount": round(b * 0.08, 2),
-            "spentAmount": 0,
-            "notes": "Sound equipment, professional DJ or acoustic performers, and high-res event photography coverage.",
-            "costSavingTip": "Book combined photo & live audio packages from creator collectives to unlock multi-service discounts."
-        },
-        {
-            "id": "b-misc",
-            "category": "MISCELLANEOUS",
-            "label": "Stationery, Favors, Permits & Insurance",
-            "percentage": 5.0,
-            "allocatedAmount": round(b * 0.05, 2),
-            "spentAmount": 0,
-            "notes": "Event liability insurance, digital invitations with RSVP tracking, and bespoke guest favors.",
-            "costSavingTip": "Send premium interactive digital invitations to eliminate postage delays and high printing costs."
-        },
-        {
-            "id": "b-contingency",
-            "category": "CONTINGENCY",
-            "label": "Emergency Buffer (Strict 10%)",
-            "percentage": 10.0,
-            "allocatedAmount": round(b * 0.10, 2),
-            "spentAmount": 0,
-            "notes": "Strictly locked contingency fund for unexpected guest additions, rush delivery fees, or weather modifications.",
-            "costSavingTip": "Leave this account untouched until 48 hours prior to the event."
-        }
-    ]
-
-    budget_breakdown = enforce_budget_invariants(raw_budget, total_budget)
-
-    # Timeline
-    timeline = [
-        {
-            "id": "t-1",
-            "phase": "phase_early",
-            "phaseLabel": "6 to 3 Months Out" if days_until > 90 else "Initial Kickoff Phase",
-            "title": "Lock Venue & Verify Capacity Bounds",
-            "description": f"Finalize rental contract for {location}, confirming ADA accessibility and noise curfew ordinances.",
-            "suggestedDueDaysBefore": min(days_until - 5, 90),
-            "priority": "high",
-            "completed": False,
-            "category": "VENUE"
-        },
-        {
-            "id": "t-2",
-            "phase": "phase_early",
-            "phaseLabel": "6 to 3 Months Out" if days_until > 90 else "Initial Kickoff Phase",
-            "title": "Tasting & Dietary Menu Finalization",
-            "description": f"Review menu pairings accommodating special requests: {special or 'Standard & Vegetarian choices'}",
-            "suggestedDueDaysBefore": min(days_until - 10, 60),
-            "priority": "high",
-            "completed": False,
-            "category": "CATERING"
-        },
-        {
-            "id": "t-3",
-            "phase": "phase_mid",
-            "phaseLabel": "4 to 2 Weeks Out",
-            "title": "Send Final RSVP Headcount to Caterer",
-            "description": f"Freeze guest list at {guest_count} and submit dietary allergy matrix to kitchen team.",
-            "suggestedDueDaysBefore": 14,
-            "priority": "high",
-            "completed": False,
-            "category": "CATERING"
-        },
-        {
-            "id": "t-4",
-            "phase": "phase_final_weeks",
-            "phaseLabel": "1 Week Out",
-            "title": "Master Run-Sheet & Vendor Distribution",
-            "description": "Email minute-by-minute timeline to all vendors, emergency contacts, and venue manager.",
-            "suggestedDueDaysBefore": 7,
-            "priority": "medium",
-            "completed": False,
-            "category": "GENERAL"
-        },
-        {
-            "id": "t-5",
-            "phase": "phase_day_of",
-            "phaseLabel": "Day of Event",
-            "title": "Vendor Load-In & Audio Check",
-            "description": "Supervise floral delivery, table placecards, microphone balance, and emergency kit.",
-            "suggestedDueDaysBefore": 0,
-            "priority": "high",
-            "completed": False,
-            "category": "GENERAL"
-        },
-        {
-            "id": "t-6",
-            "phase": "phase_post_event",
-            "phaseLabel": "Post-Event Wrap Up",
-            "title": "Vendor Settlement & Rental Returns",
-            "description": "Verify all rental equipment is intact to reclaim security deposits and send thank-you notes.",
-            "suggestedDueDaysBefore": -2,
-            "priority": "low",
-            "completed": False,
-            "category": "MISCELLANEOUS"
-        }
-    ]
-
-    # Vendor checklist
-    symbol = "$" if currency == "USD" else currency
-    vendor_checklist = [
-        {
-            "id": "v-1",
-            "category": "VENUE",
-            "vendorRole": "Venue Coordinator / Site Manager",
-            "priority": "essential",
-            "status": "to_contact",
-            "targetBookingLeadWeeks": 16,
-            "questionsToAsk": [
-                "What is your strict load-in and teardown curfew policy?",
-                "Do you require preferred in-house vendors or allow licensed external vendors?",
-                "What is the rain/inclement weather contingency plan for outdoor spaces?"
-            ],
-            "contractReviewReminders": [
-                "Check for mandatory security or trash disposal fees not quoted in base rent.",
-                "Verify certificate of insurance (COI) liability requirements."
-            ],
-            "estimatedCostRange": f"{symbol} {int(b * 0.25):,} - {int(b * 0.32):,}"
-        },
-        {
-            "id": "v-2",
-            "category": "CATERING",
-            "vendorRole": "Head Chef & Beverage Director",
-            "priority": "essential",
-            "status": "to_contact",
-            "targetBookingLeadWeeks": 12,
-            "questionsToAsk": [
-                "How do you handle severe dietary allergies (celiac, nuts, vegan) to avoid cross-contamination?",
-                "Is glassware, flatware, and linen service included in per-plate estimates?",
-                "What is the ratio of service staff to guests?"
-            ],
-            "contractReviewReminders": [
-                "Examine guaranteed minimum guest headcount cutoff date.",
-                "Watch for 20-25% administrative service charges vs gratuity distribution."
-            ],
-            "estimatedCostRange": f"{symbol} {int(b * 0.30):,} - {int(b * 0.38):,}"
-        },
-        {
-            "id": "v-3",
-            "category": "ENTERTAINMENT",
-            "vendorRole": "Lead Photographer & Cinematographer",
-            "priority": "essential",
-            "status": "to_contact",
-            "targetBookingLeadWeeks": 10,
-            "questionsToAsk": [
-                "Do you provide full raw footage / high-res digital printing rights?",
-                "What is your contingency backup plan if the primary shooter falls ill?",
-                "What is your typical turnaround time for teaser gallery vs final album?"
-            ],
-            "contractReviewReminders": [
-                "Confirm overtime hourly rate charged if event runs 30 minutes over.",
-                "Verify cancellation and rescheduling clauses."
-            ],
-            "estimatedCostRange": f"{symbol} {int(b * 0.06):,} - {int(b * 0.10):,}"
-        }
-    ]
-
-    # Bespoke Personalized Ideas
-    personalized_ideas = [
-        {
-            "id": "idea-1",
-            "title": "Interactive Audio Guestbook Station",
-            "category": "activity",
-            "description": "Replace paper guestbooks with a vintage telephone where guests record spontaneous heartfelt voicemails that get compiled into a keepsake vinyl.",
-            "whyItFits": f"Complements your '{theme}' aesthetic while capturing candid voices of all {guest_count} guests.",
-            "estimatedCostImpact": "low",
-            "isFavorite": False
-        },
-        {
-            "id": "idea-2",
-            "title": "Artisan Culinary Showcase",
-            "category": "hospitality",
-            "description": "Interactive chef station highlighting seasonal courses and special dietary accommodations.",
-            "whyItFits": f"Directly reflects your requests: '{special or 'Artisan culinary selections'}'.",
-            "estimatedCostImpact": "medium",
-            "isFavorite": True
-        },
-        {
-            "id": "idea-3",
-            "title": "Warm Canopy of Micro-Fairy Starlight",
-            "category": "decor",
-            "description": "Suspended warm ambient fairy light ceiling creating an intimate European-courtyard atmosphere inside the venue.",
-            "whyItFits": f"Transforms {location} without requiring excessive tabletop floral sprawl.",
-            "estimatedCostImpact": "medium",
-            "isFavorite": False
-        },
-        {
-            "id": "idea-4",
-            "title": "Acoustic Prelude Transitioning to Curated Vinyl Set",
-            "category": "activity",
-            "description": "Subtle acoustic guitar during guest arrival and dinner, seamlessly pivoting into an upbeat dance curation.",
-            "whyItFits": "Maximizes entertainment budget efficiency with a 2-in-1 performer agreement.",
-            "estimatedCostImpact": "medium",
-            "isFavorite": False
-        },
-        {
-            "id": "idea-5",
-            "title": "Pressed Botanical Ceramic Placecard Keepsakes",
-            "category": "custom",
-            "description": "Handcrafted botanical ceramic tiles with each guest's name that double as seating assignments and personalized favors.",
-            "whyItFits": "Elevates guest appreciation while combining seating cards and favor budgets into one cost-effective item.",
-            "estimatedCostImpact": "low",
-            "isFavorite": False
-        }
-    ]
-
-    return {
-        "planId": f"plan-{int(datetime.now().timestamp())}",
-        "summary": {
-            "eventTitle": title,
-            "vibeStatement": f"A thoughtfully orchestrated {event_type} celebration in {location}, defined by a {theme} aesthetic, memorable hospitality, and tight financial safeguards.",
-            "targetGuestCount": guest_count,
-            "totalBudget": total_budget,
-            "currency": currency,
-            "daysUntilEvent": days_until
-        },
-        "budgetBreakdown": budget_breakdown,
-        "timeline": timeline,
-        "vendorChecklist": vendor_checklist,
-        "personalizedIdeas": personalized_ideas,
-        "coPilotWelcomeMessage": "Welcome! I've engineered your celebration plan with strict budget protection (including our 10% emergency buffer). Tell me anything you'd like to refine!"
-    }
-
-def handle_copilot(data):
-    current_plan = data.get("currentPlan", {})
-    user_prompt = sanitize_text(data.get("userPrompt", "")).lower()
-
-    if "vegetarian" in user_prompt or "vegan" in user_prompt or "dietary" in user_prompt:
-        budget = current_plan.get("budgetBreakdown", [])
-        for b in budget:
-            if b.get("category") == "CATERING":
-                b["notes"] = f"{b.get('notes', '')} [MODIFIED: 100% plant-based / dietary tailored menu with zero cross-contamination protocols]."
-                b["costSavingTip"] = "Plant-forward seasonal menus can lower raw food costs by 12% compared to premium beef selections."
-        return {
-            "replyMessage": "I've tailored your catering blueprint to be 100% plant-forward and dietary-compliant! Seasonal vegetable pairings will also help manage per-plate costs.",
-            "updatedPlan": {"budgetBreakdown": budget}
-        }
-
-    if "cut decor" in user_prompt or "reduce decor" in user_prompt or "budget" in user_prompt:
-        budget = current_plan.get("budgetBreakdown", [])
-        total_budget = current_plan.get("summary", {}).get("totalBudget", 10000)
-        for b in budget:
-            if b.get("category") == "DECOR":
-                b["percentage"] = max(5.0, b.get("percentage", 12.0) - 3.0)
-                b["allocatedAmount"] = round(total_budget * (b["percentage"] / 100.0), 2)
-            elif b.get("category") == "ENTERTAINMENT":
-                b["percentage"] = b.get("percentage", 8.0) + 3.0
-                b["allocatedAmount"] = round(total_budget * (b["percentage"] / 100.0), 2)
-        return {
-            "replyMessage": "I have adjusted your budget allocation: reduced Decor by 3% and reallocated funds to Entertainment while keeping your 10% contingency safely intact.",
-            "updatedPlan": {"budgetBreakdown": enforce_budget_invariants(budget, total_budget)}
-        }
-
-    if "task" in user_prompt or "sparkler" in user_prompt:
-        timeline = current_plan.get("timeline", [])
-        new_task = {
-            "id": f"t-custom-{int(datetime.now().timestamp())}",
-            "phase": "phase_day_of",
-            "phaseLabel": "Day of Event",
-            "title": "Coordinated Sparkler Send-Off",
-            "description": "Distribute smokeless 36-inch sparklers and torches 15 minutes before departure with designated sand disposal buckets.",
-            "suggestedDueDaysBefore": 0,
-            "priority": "high",
-            "completed": False,
-            "category": "ENTERTAINMENT"
-        }
-        timeline.append(new_task)
-        return {
-            "replyMessage": "Added 'Coordinated Sparkler Send-Off' to your Day-of timeline with sand bucket safety disposal instructions!",
-            "updatedPlan": {"timeline": timeline}
-        }
-
-    return {
-        "replyMessage": f"Great point! I've noted: '{user_prompt}'. I've updated the event timeline and advisory notes to reflect this priority."
-    }
-
-class RequestHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        # Enable CORS for convenience
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Accept")
-        super().end_headers()
+class CelebrationHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=PUBLIC_DIR, **kwargs)
 
     def do_OPTIONS(self):
         self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
-
-    def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
-            self.path = "/public/index.html"
-            if not os.path.exists("." + self.path):
-                self.path = "/index.html"
-        return super().do_GET()
 
     def do_POST(self):
-        content_length = int(self.headers.get("Content-Length", 0))
-        post_data = self.rfile.read(content_length)
-
-        if self.path == "/api/plan/generate":
-            try:
-                data = json.loads(post_data.decode("utf-8"))
-                plan = generate_plan(data)
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(plan).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
-            return
-
-        if self.path == "/api/copilot/chat":
-            try:
-                data = json.loads(post_data.decode("utf-8"))
-                result = handle_copilot(data)
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(result).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
-            return
-
-        self.send_response(404)
-        self.end_headers()
-
-if __name__ == "__main__":
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), RequestHandler) as httpd:
-        print(f"CelebrationAI Live Server running at http://localhost:{PORT}")
-        sys.stdout.flush()
+        content_len = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_len) if content_len > 0 else b'{}'
+        
         try:
+            payload = json.loads(post_data.decode('utf-8'))
+        except Exception:
+            payload = {}
+
+        if self.path == '/api/plan':
+            self.handle_plan(payload)
+        elif self.path == '/api/copilot':
+            self.handle_copilot(payload)
+        else:
+            self.send_error(404, "Endpoint Not Found")
+
+    def handle_plan(self, data):
+        event_type = data.get('eventType', 'WEDDING')
+        event_name = data.get('eventName', 'Celebration Gala')
+        event_date_str = data.get('eventDate', '2027-06-15')
+        location = data.get('location', 'San Francisco, CA')
+        guest_count = int(data.get('guestCount', 100))
+        total_budget = float(data.get('totalBudget', 30000))
+        currency = data.get('currency', 'USD')
+        theme = data.get('themePreferences', 'Modern botanical elegance')
+        special = data.get('specialRequests', 'Dietary accommodation')
+
+        gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+        plan = None
+
+        if gemini_key:
+            plan = self.call_gemini_api(gemini_key, data)
+
+        if not plan:
+            plan = self.generate_mock_plan(event_type, event_name, event_date_str, location, guest_count, total_budget, currency, theme, special)
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({'success': True, 'data': plan}).encode('utf-8'))
+
+    def call_gemini_api(self, api_key, data):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+            prompt = f"Generate an event plan JSON for {data.get('eventName')} with budget {data.get('totalBudget')} {data.get('currency')}, {data.get('guestCount')} guests, event date {data.get('eventDate')} in {data.get('location')}."
+            req_body = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"response_mime_type": "application/json"}
+            }).encode('utf-8')
+            
+            req = urllib.request.Request(url, data=req_body, headers={'Content-Type': 'application/json'}, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                res_data = json.loads(resp.read().decode('utf-8'))
+                text = res_data['candidates'][0]['content']['parts'][0]['text']
+                return json.loads(text)
+        except Exception as e:
+            return None
+
+    def generate_mock_plan(self, event_type, event_name, event_date_str, location, guests, total, currency, theme, special):
+        is_wedding = (event_type == 'WEDDING')
+        is_birthday = (event_type == 'BIRTHDAY')
+        is_community = (event_type == 'COMMUNITY')
+
+        venue_pct = 30 if is_wedding else (25 if is_community else 20)
+        catering_pct = 30 if is_wedding else (35 if is_birthday else 30)
+        decor_pct = 15
+        ent_pct = 10 if is_wedding else 15
+        misc_pct = 5
+        contingency_pct = 10
+
+        budget = [
+            {
+                "id": "b-venue",
+                "category": "Venue & Facilities",
+                "percentage": venue_pct,
+                "allocatedAmount": round(total * venue_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": "Inquire if booking an off-peak day (Friday/Sunday) or morning block unlocks a 15-20% discount.",
+                "isContingency": False
+            },
+            {
+                "id": "b-catering",
+                "category": "Catering & Beverage Service",
+                "percentage": catering_pct,
+                "allocatedAmount": round(total * catering_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": f"With {guests} guests, choosing artisan food stations instead of plated multi-course dining saves 20% on server staffing.",
+                "isContingency": False
+            },
+            {
+                "id": "b-decor",
+                "category": "Decor, Florals & Styling",
+                "percentage": decor_pct,
+                "allocatedAmount": round(total * decor_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": "Repurpose stage or ceremony floral arrangements into reception dining table centerpieces.",
+                "isContingency": False
+            },
+            {
+                "id": "b-entertainment",
+                "category": "Entertainment & Audio/Visual",
+                "percentage": ent_pct,
+                "allocatedAmount": round(total * ent_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": "Contract a sound and lighting package bundled with your MC to eliminate separate travel and rental line items.",
+                "isContingency": False
+            },
+            {
+                "id": "b-misc",
+                "category": "Miscellaneous & Stationery",
+                "percentage": misc_pct,
+                "allocatedAmount": round(total * misc_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": "Adopt digital interactive RSVPs to eliminate high-volume paper printing and postage fees.",
+                "isContingency": False
+            },
+            {
+                "id": "b-contingency",
+                "category": "Contingency Reserve (10%)",
+                "percentage": contingency_pct,
+                "allocatedAmount": round(total * contingency_pct / 100),
+                "actualSpent": 0,
+                "costSavingTip": "Safeguarded until 14 days prior to absorb unexpected guest count shifts or weather changes.",
+                "isContingency": True
+            }
+        ]
+
+        timeline = [
+            {
+                "id": "t-1",
+                "phase": "6+ Months Out",
+                "title": f"Reserve Primary Location in {location}",
+                "description": f"Lock in venue contract for {guests} guests. Verify liquor license, curfew laws, and vendor access hours.",
+                "targetDateDescription": "6 Months Prior",
+                "priority": "HIGH",
+                "isCompleted": False
+            },
+            {
+                "id": "t-2",
+                "phase": "3-5 Months Out",
+                "title": "Tasting Session & Finalize Caterer",
+                "description": f"Incorporate dietary requirements: {special or 'standard menu'}. Finalize beverage tier.",
+                "targetDateDescription": "4 Months Prior",
+                "priority": "HIGH",
+                "isCompleted": False
+            },
+            {
+                "id": "t-3",
+                "phase": "1-2 Months Out",
+                "title": "Launch RSVP Portal & Invitation Distribution",
+                "description": f"Communicate dress code and itinerary aligned with {theme or 'event aesthetic'}.",
+                "targetDateDescription": "6-8 Weeks Prior",
+                "priority": "MEDIUM",
+                "isCompleted": False
+            },
+            {
+                "id": "t-4",
+                "phase": "2-4 Weeks Out",
+                "title": "Submit Final Headcount to Caterer",
+                "description": "Lock in guaranteed meal counts, seating chart, and dietary accommodation cards.",
+                "targetDateDescription": "14 Days Prior",
+                "priority": "HIGH",
+                "isCompleted": False
+            },
+            {
+                "id": "t-5",
+                "phase": "1 Week Out",
+                "title": "Run-of-Show Master Walkthrough",
+                "description": "Distribute minute-by-minute contact sheet to coordinator, DJ/MC, and family leaders.",
+                "targetDateDescription": "7 Days Prior",
+                "priority": "HIGH",
+                "isCompleted": False
+            },
+            {
+                "id": "t-6",
+                "phase": "Day-of",
+                "title": "Day-Of Execution & Vendor Arrival Check-In",
+                "description": "Oversee load-in, AV soundcheck, staging setup, and welcome guests.",
+                "targetDateDescription": "Morning of Event",
+                "priority": "CRITICAL",
+                "isCompleted": False
+            }
+        ]
+
+        vendors = [
+            {
+                "id": "v-1",
+                "vendorType": "Venue Coordinator",
+                "priority": "CRITICAL",
+                "status": "PENDING",
+                "estimatedCost": round(total * venue_pct / 100),
+                "questionsToAsk": [
+                    "What time does morning load-in open for decorators and caterers?",
+                    "Are security and post-event janitorial services included in base pricing?",
+                    "What is your exact rain/weather contingency backup space?"
+                ],
+                "contractWatchouts": [
+                    "Check for mandatory 20-24% service charges and alcohol corkage fees.",
+                    "Verify exact cancellation and refund schedules."
+                ]
+            },
+            {
+                "id": "v-2",
+                "vendorType": "Caterer & Beverage Service",
+                "priority": "CRITICAL",
+                "status": "PENDING",
+                "estimatedCost": round(total * catering_pct / 100),
+                "questionsToAsk": [
+                    "How do you isolate meals for severe allergies and dietary constraints?",
+                    "Do you supply bussing, cleanup staff, glassware, and tableware?",
+                    "What is the final deadline to update attendee counts?"
+                ],
+                "contractWatchouts": [
+                    "Beware of cake-cutting fees or per-server overtime billing multipliers."
+                ]
+            },
+            {
+                "id": "v-3",
+                "vendorType": "Photographer / Videographer",
+                "priority": "HIGH",
+                "status": "PENDING",
+                "estimatedCost": round(total * 0.12),
+                "questionsToAsk": [
+                    "Have you photographed this venue previously under evening lighting?",
+                    "What is your delivery timeframe for high-res unwatermarked galleries?",
+                    "Do you carry redundant camera bodies, lenses, and dual memory card slots?"
+                ],
+                "contractWatchouts": [
+                    "Ensure contract guarantees full digital download and personal printing rights."
+                ]
+            },
+            {
+                "id": "v-4",
+                "vendorType": "DJ / Sound Engineer",
+                "priority": "HIGH",
+                "status": "PENDING",
+                "estimatedCost": round(total * ent_pct / 100),
+                "questionsToAsk": [
+                    "Do you supply wireless microphones for speeches and toasts?",
+                    "How do you handle guest song requests and do-not-play lists?",
+                    "What are your electrical load and outlet requirements?"
+                ],
+                "contractWatchouts": [
+                    "Confirm backup equipment is available on-site in case of laptop/mixer malfunction."
+                ]
+            }
+        ]
+
+        ideas = [
+            {
+                "id": "i-1",
+                "title": "Interactive Audio Guestbook & Memory Phone",
+                "category": "Activity & Flow",
+                "description": "Set up a vintage rotary telephone lounge where guests pick up the receiver to record spontaneous voice messages and milestone memories.",
+                "estimatedCostImpact": "Low ($)"
+            },
+            {
+                "id": "i-2",
+                "title": f"Bespoke Signature Mocktail/Cocktail Tasting Flights",
+                "category": "Food & Beverage",
+                "description": f"Serve two customized drinks inspired by local landmarks in {location}, paired with artisanal garnish skewers.",
+                "estimatedCostImpact": "Moderate ($$)"
+            },
+            {
+                "id": "i-3",
+                "title": "Warm Ambient Fairy Light & Projection Canopy",
+                "category": "Decor & Aesthetics",
+                "description": f"Create an ethereal glowing canopy with warm amber uplighting and fairy strands styled to {theme or 'your vision'}.",
+                "estimatedCostImpact": "Moderate ($$)"
+            },
+            {
+                "id": "i-4",
+                "title": "Acoustic Sunset Interlude",
+                "category": "Theme & Vibe",
+                "description": "Smoothly transition guests from ceremony to cocktail hour with a live fingerstyle guitarist playing modern melodic favorites.",
+                "estimatedCostImpact": "Moderate ($$)"
+            },
+            {
+                "id": "i-5",
+                "title": "Zero-Waste Botanical Keepsake Favors",
+                "category": "Community Impact",
+                "description": "Provide seeded plantable place cards with wild lavender and poppy seeds that guests take home to plant.",
+                "estimatedCostImpact": "Low ($)"
+            }
+        ]
+
+        return {
+            "planSummary": f"Custom {event_type.lower()} architecture for '{event_name}' in {location} on {event_date_str}. Configured for {guests} guests with a budget of {currency} {total:,.0f}, including a locked 10% contingency reserve ({currency} {round(total*0.1):,.0f}).",
+            "budgetBreakdown": budget,
+            "timeline": timeline,
+            "vendors": vendors,
+            "bespokeIdeas": ideas
+        }
+
+    def handle_copilot(self, data):
+        msg = data.get('message', '').lower()
+        current_plan = data.get('currentPlan', {})
+        budget = current_plan.get('budgetBreakdown', [])
+        
+        reply = f"I've processed your instruction: '{data.get('message')}'. "
+        modifications = {}
+
+        if 'vegetarian' in msg or 'vegan' in msg:
+            for b in budget:
+                if 'catering' in b.get('category', '').lower():
+                    b['notes'] = "Updated: 100% gourmet plant-based menu."
+                    b['costSavingTip'] = "Seasonal plant-based menus often yield 10-15% cost savings on premium proteins."
+            modifications['updatedBudget'] = budget
+            reply += "Converted catering profile to 100% plant-based / vegetarian and refreshed cost-saving guidance."
+
+        if 'cut' in msg and 'decor' in msg and ('20%' in msg or '20 percent' in msg):
+            cut_amount = 0
+            for b in budget:
+                if 'decor' in b.get('category', '').lower():
+                    cut_amount = round(b.get('allocatedAmount', 0) * 0.2)
+                    b['allocatedAmount'] -= cut_amount
+                    b['percentage'] = round(b['percentage'] * 0.8 * 10) / 10
+            for b in budget:
+                if b.get('isContingency'):
+                    b['allocatedAmount'] += cut_amount
+                    b['percentage'] = round((b['percentage'] + (b['percentage'] * 0.2)) * 10) / 10
+            modifications['updatedBudget'] = budget
+            reply += f" Trimmed decor budget by 20% (-${cut_amount:,}) and reallocated the surplus into your Contingency reserve."
+
+        if 'photobooth' in msg or 'photo booth' in msg:
+            modifications['addedTasks'] = [{
+                "id": f"t-photobooth-{int(datetime.now().timestamp())}",
+                "phase": "2-4 Weeks Out",
+                "title": "Book 360 Open-Air Photobooth & Custom Props",
+                "description": "Contract modern interactive camera kiosk with instant SMS/AirDrop sharing.",
+                "targetDateDescription": "3 Weeks Prior",
+                "priority": "MEDIUM",
+                "isCompleted": False
+            }]
+            reply += " Scheduled a new task to contract a 360 photobooth 3 weeks prior."
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({'success': True, 'reply': reply, 'modifications': modifications}).encode('utf-8'))
+
+def run_server():
+    server_address = ('', PORT)
+    try:
+        httpd = socketserver.TCPServer(server_address, CelebrationHandler)
+        print(f"CelebrationAI Server listening on http://localhost:{PORT}")
+        httpd.serve_forever()
+    except OSError as e:
+        if "address already in use" in str(e).lower() or e.errno == 98 or e.errno == 10048:
+            alt_port = PORT + 1
+            httpd = socketserver.TCPServer(('', alt_port), CelebrationHandler)
+            print(f"CelebrationAI Server listening on http://localhost:{alt_port}")
             httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down server.")
+        else:
+            raise e
+
+if __name__ == '__main__':
+    run_server()
 
